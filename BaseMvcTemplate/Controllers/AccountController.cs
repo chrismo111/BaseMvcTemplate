@@ -10,6 +10,8 @@ using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using BaseMvcTemplate.Models;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace BaseMvcTemplate.Controllers {
     [Authorize]
@@ -31,6 +33,80 @@ namespace BaseMvcTemplate.Controllers {
             private set {
                 _userManager = value;
             }
+        }
+
+        [Authorize( Roles = "Administrator" )]
+        public ActionResult ListRoles() {
+            var db = new ApplicationDbContext();
+            var model = new List<RoleViewModel>();
+            var roles = db.Roles.ToList();
+            db.Roles.ToList().ForEach( r => model.Add( new RoleViewModel { RoleID = r.Id, RoleName = r.Name } ) );
+            return View( model );
+        }
+
+        //Get: /Account/AssignUserRole
+        [Authorize( Roles = "Administrator" )]
+        public ActionResult AssignUserRole( string roleID ) {
+            UserRoleViewModel model = null;
+            var userList = new List<ApplicationUser>();
+            using( var db = new ApplicationDbContext() ) {
+                var role = db.Roles.Find( roleID );
+                model = new UserRoleViewModel { RoleID = role.Id, RoleName = role.Name };
+                userList.AddRange( db.Users.ToList().Where( u => !UserManager.IsInRole( u.Id, role.Name ) ) );
+            }
+            //To do: reove Users MultiSelectList from  UserRoleViewModel and put it in the view then reference it via ViewBag.
+            model.Users = new MultiSelectList( userList.OrderBy( u => u.UserName ), "Id", "UserName" );
+            return View( model );
+        }
+
+        //Post: /Account/AssignUserRole
+        [HttpPost]
+        [Authorize( Roles = "Administrator" )]
+        [ValidateAntiForgeryToken]
+        public ActionResult AssignUserRole( UserRoleViewModel model ) {
+            if( this.ModelState.IsValid && model.SelectedUsers != null ) {
+                using( var db = new ApplicationDbContext() ) {
+                    using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
+                        model.SelectedUsers.ToList().ForEach( 
+                            userId => userMgr.AddToRole( userId, model.RoleName ) 
+                        );
+                    }
+                }
+                return RedirectToAction( "ListRoles" );
+            }
+            return View( model );
+        }
+
+        //Get: /Account/UnAssignUserRole
+        //TO DO: Refactor so that this and AssignUserRole share the body of the method
+        //The only difference is the where clause in db.Users.ToList().Where
+        [Authorize( Roles = "Administrator" )]
+        public ActionResult UnAssignUserRole( string roleID ) {
+            UserRoleViewModel model = null;
+            var userList = new List<ApplicationUser>();
+            using( var db = new ApplicationDbContext() ) {
+                var role = db.Roles.Find( roleID );
+                model = new UserRoleViewModel { RoleID = role.Id, RoleName = role.Name };
+                userList.AddRange( db.Users.ToList().Where( u => UserManager.IsInRole( u.Id, role.Name ) ) );
+            }
+            model.Users = new MultiSelectList( userList.OrderBy( u => u.UserName ), "Id", "UserName" );
+            return View( model );
+        }
+
+        //Post: /Account/UnAssignUserRole
+        [HttpPost]
+        [Authorize( Roles = "Administrator" )]
+        [ValidateAntiForgeryToken]
+        public ActionResult UnAssignUserRole(UserRoleViewModel model) {
+            if( this.ModelState.IsValid && model.SelectedUsers != null ) {
+                using( var db = new ApplicationDbContext() ) {
+                    using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
+                        model.SelectedUsers.ToList().ForEach( userId => userMgr.RemoveFromRole( userId, model.RoleName) );
+                    }
+                }
+                return RedirectToAction( "ListRoles" );
+            }
+            return View( model );
         }
 
         //
@@ -74,7 +150,6 @@ namespace BaseMvcTemplate.Controllers {
                     model.Email = user.UserName;
                 }
             }
-
 
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, change to shouldLockout: true

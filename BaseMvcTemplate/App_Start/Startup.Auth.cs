@@ -4,14 +4,14 @@ using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.Cookies;
-using Microsoft.Owin.Security.Google;
-using Owin.Security.Providers.LinkedIn;
 using Owin;
+using Owin.Security.Providers.LinkedIn;
 using System;
-using System.Configuration;
 using System.Web.Configuration;
+using System.Configuration;
 
 namespace BaseMvcTemplate {
+
     public partial class Startup {
         // For more information on configuring authentication, please visit http://go.microsoft.com/fwlink/?LinkId=301864
         public void ConfigureAuth( IAppBuilder app ) {
@@ -61,19 +61,18 @@ namespace BaseMvcTemplate {
                 roleMgr.Create( new IdentityRole( "Submitter" ) );
             }
 
-            Action<string, string, string> createUser = ( userName, email, pass ) => {
+            Action<string, string, string, string> createUser = ( userName, email, pass, role ) => {
                 var user = new ApplicationUser { UserName = userName, Email = email };
                 if( userMgr.FindByName( userName ) == null ) {
                     var result = userMgr.Create( user, pass );
                     if( result.Succeeded ) {
-                        userMgr.AddToRole( user.Id, userName );
+                        userMgr.AddToRole( user.Id, role );
                     }
                 }
             };
-
-            createUser( "Admin", "admin@coderfoundry.com", "p@ssW0rd" );
-            createUser( "Submitter", "submitter@coderfoundry.com", "p@ssW0rd" );
-
+          
+            createUser( "Admin", WebConfigurationManager.AppSettings["adminEmail"], WebConfigurationManager.AppSettings["adminPass"] , "Administrator" );
+            createUser( "Submitter", WebConfigurationManager.AppSettings["submitterEmail"], WebConfigurationManager.AppSettings["submitterPass"], "Submitter" );
         }
 
     }

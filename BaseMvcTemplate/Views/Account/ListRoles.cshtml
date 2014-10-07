@@ -1,0 +1,37 @@
+﻿@model IEnumerable<BaseMvcTemplate.Models.RoleViewModel>
+
+@{
+    ViewBag.Title = "System Roles";
+}
+
+<h2>System Roles</h2>
+
+@*<p>
+    @Html.ActionLink("Create New", "Create")
+</p>*@
+
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.RoleName)
+        </th>
+        <th>
+           
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.RoleName)
+        </td>
+
+        <td>
+            @Html.ActionLink( "Assign Users", "AssignUserRole", new { roleID = item.RoleID } ) |
+            @Html.ActionLink( "Unassign Users", "UnAssignUserRole", new { roleID = item.RoleID } ) |
+        </td>
+    </tr>
+}
+
+</table>
