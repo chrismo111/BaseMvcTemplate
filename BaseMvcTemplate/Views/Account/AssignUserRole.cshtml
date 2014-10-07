@@ -14,6 +14,7 @@
         
         <hr />
         @Html.ValidationSummary( true, "", new { @class = "text-danger" } )
+        @* Doesn't seem to do anything *@
         @Html.HiddenFor( model => model.RoleID )
         @Html.HiddenFor( model => model.RoleName )
 
@@ -28,8 +29,12 @@
         <div class="form-group">
             @Html.LabelFor( model => model.Users, htmlAttributes : new { @class = "control-label col-md-2" } )
             <div class="col-md-10">
-                @Html.ListBoxFor( model => model.SelectedUsers, Model.Users as MultiSelectList, new { htmlAttributes = new { @class = "form-control", id = "fred" } } )
+                @Html.ListBoxFor( model => model.SelectedUsers, Model.Users as MultiSelectList, new { htmlAttributes = new { @class = "form-control",   } } )
                 @Html.ValidationMessageFor( model => model.Users, "", new { @class = "text-danger" } )
+                @if( ViewBag.UnSelectedMessage != null ) {
+                    <br />
+                    <div class="text-danger">@ViewBag.UnSelectedMessage</div>
+                }
             </div>
         </div>
 

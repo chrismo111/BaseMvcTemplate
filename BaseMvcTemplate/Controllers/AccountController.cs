@@ -1,17 +1,15 @@
-﻿using System;
-using System.Globalization;
+﻿using BaseMvcTemplate.Models;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNet.Identity.Owin;
+using Microsoft.Owin.Security;
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
-using Microsoft.AspNet.Identity;
-using Microsoft.AspNet.Identity.Owin;
-using Microsoft.Owin.Security;
-using BaseMvcTemplate.Models;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace BaseMvcTemplate.Controllers {
     [Authorize]
@@ -37,16 +35,18 @@ namespace BaseMvcTemplate.Controllers {
 
         [Authorize( Roles = "Administrator" )]
         public ActionResult ListRoles() {
-            var db = new ApplicationDbContext();
             var model = new List<RoleViewModel>();
-            var roles = db.Roles.ToList();
-            db.Roles.ToList().ForEach( r => model.Add( new RoleViewModel { RoleID = r.Id, RoleName = r.Name } ) );
+            using( var db = new ApplicationDbContext() ) {
+                var roles = db.Roles.ToList();
+                db.Roles.ToList().ForEach( r => model.Add( new RoleViewModel { RoleID = r.Id, RoleName = r.Name } ) );
+            }
             return View( model );
         }
 
         //Get: /Account/AssignUserRole
         [Authorize( Roles = "Administrator" )]
         public ActionResult AssignUserRole( string roleID ) {
+            ViewBag.UnSelectedMessage = ( string )TempData["UnSelectedError"];
             UserRoleViewModel model = null;
             var userList = new List<ApplicationUser>();
             using( var db = new ApplicationDbContext() ) {
@@ -64,16 +64,24 @@ namespace BaseMvcTemplate.Controllers {
         [Authorize( Roles = "Administrator" )]
         [ValidateAntiForgeryToken]
         public ActionResult AssignUserRole( UserRoleViewModel model ) {
-            if( this.ModelState.IsValid && model.SelectedUsers != null ) {
-                using( var db = new ApplicationDbContext() ) {
-                    using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
-                        model.SelectedUsers.ToList().ForEach( 
-                            userId => userMgr.AddToRole( userId, model.RoleName ) 
-                        );
+            if( this.ModelState.IsValid ) {
+                if( model.SelectedUsers != null ) {
+                    using( var db = new ApplicationDbContext() ) {
+                        using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
+                            model.SelectedUsers.ToList().ForEach(
+                                userId => userMgr.AddToRole( userId, model.RoleName )
+                            );
+                        }
                     }
+                    //Success redirect to System Roles page
+                    return RedirectToAction( "ListRoles" );
+                } else {
+                    //User hasn't selected Anything, print an error message
+                    TempData["UnSelectedError"] = "You must select at least one user from the list.";
+                    return RedirectToAction( "AssignUserRole", new { roleID = model.RoleID } );
                 }
-                return RedirectToAction( "ListRoles" );
             }
+            //Goes here when model state is not valid
             return View( model );
         }
 
@@ -82,6 +90,7 @@ namespace BaseMvcTemplate.Controllers {
         //The only difference is the where clause in db.Users.ToList().Where
         [Authorize( Roles = "Administrator" )]
         public ActionResult UnAssignUserRole( string roleID ) {
+            ViewBag.UnSelectedMessage = ( string )TempData["UnSelectedError"];
             UserRoleViewModel model = null;
             var userList = new List<ApplicationUser>();
             using( var db = new ApplicationDbContext() ) {
@@ -97,15 +106,25 @@ namespace BaseMvcTemplate.Controllers {
         [HttpPost]
         [Authorize( Roles = "Administrator" )]
         [ValidateAntiForgeryToken]
-        public ActionResult UnAssignUserRole(UserRoleViewModel model) {
-            if( this.ModelState.IsValid && model.SelectedUsers != null ) {
-                using( var db = new ApplicationDbContext() ) {
-                    using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
-                        model.SelectedUsers.ToList().ForEach( userId => userMgr.RemoveFromRole( userId, model.RoleName) );
+        public ActionResult UnAssignUserRole( UserRoleViewModel model ) {
+            if( this.ModelState.IsValid ) {
+                if( model.SelectedUsers != null ) {
+                    using( var db = new ApplicationDbContext() ) {
+                        using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( db ) ) ) {
+                            model.SelectedUsers.ToList().ForEach(
+                                userId => userMgr.RemoveFromRole( userId, model.RoleName )
+                            );
+                        }
                     }
+                    //Success redirect to System Roles page
+                    return RedirectToAction( "ListRoles" );
+                } else {
+                    //User hasn't selected Anything, print an error message
+                    TempData["UnSelectedError"] = "You must select at least one user from the list.";
+                    return RedirectToAction( "AssignUserRole", new { roleID = model.RoleID } );
                 }
-                return RedirectToAction( "ListRoles" );
             }
+            //Goes here when model state is not valid
             return View( model );
         }
 

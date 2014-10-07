@@ -8,7 +8,6 @@ using Owin;
 using Owin.Security.Providers.LinkedIn;
 using System;
 using System.Web.Configuration;
-using System.Configuration;
 
 namespace BaseMvcTemplate {
 
@@ -47,32 +46,38 @@ namespace BaseMvcTemplate {
             app.UseGoogleAuthentication( WebConfigurationManager.AppSettings["googleAuthClientID"], WebConfigurationManager.AppSettings["googleAuthClientSecret"] );
             app.UseLinkedInAuthentication( WebConfigurationManager.AppSettings["linkedInAuthClientId"], WebConfigurationManager.AppSettings["linkedInAuthSecret"] );
 
-            Seed( new ApplicationDbContext() );
+            Seed();
         }
 
-        private void Seed( ApplicationDbContext ctx ) {
-            var roleMgr = new RoleManager<IdentityRole>( new RoleStore<IdentityRole>( ctx ) );
-            var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( ctx ) );
-            if( !roleMgr.RoleExists( "Administrator" ) ) {
-                roleMgr.Create( new IdentityRole( "Administrator" ) );
-            }
+        private void Seed() {
 
-            if( !roleMgr.RoleExists( "Submitter" ) ) {
-                roleMgr.Create( new IdentityRole( "Submitter" ) );
-            }
+            using( var ctx = new ApplicationDbContext() ) {
+                using( var roleMgr = new RoleManager<IdentityRole>( new RoleStore<IdentityRole>( ctx ) ) ) {
+                    if( !roleMgr.RoleExists( "Administrator" ) ) {
+                        roleMgr.Create( new IdentityRole( "Administrator" ) );
+                    }
 
-            Action<string, string, string, string> createUser = ( userName, email, pass, role ) => {
-                var user = new ApplicationUser { UserName = userName, Email = email };
-                if( userMgr.FindByName( userName ) == null ) {
-                    var result = userMgr.Create( user, pass );
-                    if( result.Succeeded ) {
-                        userMgr.AddToRole( user.Id, role );
+                    if( !roleMgr.RoleExists( "Submitter" ) ) {
+                        roleMgr.Create( new IdentityRole( "Submitter" ) );
                     }
                 }
-            };
-          
-            createUser( "Admin", WebConfigurationManager.AppSettings["adminEmail"], WebConfigurationManager.AppSettings["adminPass"] , "Administrator" );
-            createUser( "Submitter", WebConfigurationManager.AppSettings["submitterEmail"], WebConfigurationManager.AppSettings["submitterPass"], "Submitter" );
+
+                using( var userMgr = new UserManager<ApplicationUser>( new UserStore<ApplicationUser>( ctx ) ) ) {
+
+                    Action<string, string, string, string> createUser = ( userName, email, pass, role ) => {
+                        var user = new ApplicationUser { UserName = userName, Email = email };
+                        if( userMgr.FindByName( userName ) == null ) {
+                            var result = userMgr.Create( user, pass );
+                            if( result.Succeeded ) {
+                                userMgr.AddToRole( user.Id, role );
+                            }
+                        }
+                    };
+
+                    createUser( "Admin", WebConfigurationManager.AppSettings["adminEmail"], WebConfigurationManager.AppSettings["adminPass"], "Administrator" );
+                    createUser( "Submitter", WebConfigurationManager.AppSettings["submitterEmail"], WebConfigurationManager.AppSettings["submitterPass"], "Submitter" );
+                }
+            }
         }
 
     }
